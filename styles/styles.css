@@ -48,9 +48,13 @@ td {
   border-collapse: collapse;
   border: 1px solid black;
 }
-#label > td {
+#label > th {
   text-align: center;
   padding: 1%;
+  font-weight: bold;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  color: #fff;
 }
 th,
 td {
@@ -71,12 +75,6 @@ td {
 
 #label {
   background-color: rgb(133, 133, 133);
-}
-#label > td {
-  font-weight: bold;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  color: #fff;
 }
 
 #inputData {

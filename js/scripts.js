@@ -13,7 +13,6 @@ class Model {
     }
 
     editItem(item) {
-        //do something
         this.listItems.splice(1, 1, item);
         this.saveStorage();
     }
@@ -26,81 +25,73 @@ class Model {
 
 class View {
     constructor() {
-        console.log("View constructor()");
-
         this.tableContent = document.getElementById("table");
-
         this.listItems = [];
-        this.clearTable = function () { };
-        this.addItem = function () { };
-        this.editItem = function () { };
-        this.deleteItem = function () { };
-        this.searchItem = function () { };
-        this.confirm = function () { };
-        this.clear = function () { };
-        this.closeModal = function () { };
     }
 
-    appendHeader() {
+    appendSearchBar() {
         var header = document.getElementById("header");
         var caption = document.createElement("div");
         caption.id = "caption";
-        caption.innerText = "Quản lý sản phẩm"
+        caption.innerText = "Quản lý sản phẩm MVC"
         var searchBar = document.createElement("div");
         searchBar.id = "searchBar";
         var addButton = document.createElement("button");
         addButton.type = "button";
-        addButton.className = "buttonAddItem";
         addButton.innerHTML = "Thêm sản phẩm"
         addButton.addEventListener("click", this.addItem);
         var searchInput = document.createElement("input");
-        // searchInput.id = "searchName";
         searchInput.placeholder = "Tìm kiếm sản phẩm";
+        searchInput.id = "searchInput";
         var searchButton = document.createElement("button");
         searchButton.type = "button";
         searchButton.innerHTML = "Tìm kiếm";
-        searchButton.addEventListener("click", this.searchItem);
+        searchButton.addEventListener("click", this.searchItems);
 
         searchBar.append(addButton, searchInput, searchButton);
         header.append(caption, searchBar);
+
+        // var str = `<div id="caption">Quản lý sản phẩm MVC</div>
+        //             <div id="searchBar">
+        //                 <button id="buttonAddItem" type="button" onclick="${this.addItem}">
+        //                     Thêm sản phẩm</button>
+        //                 <input type="text" id="searchName" placeholder="Tìm kiếm sản phẩm" />
+        //                 <button type="button" id="searchButton" >
+        //                     Tìm kiếm</button>
+        //             </div>`
+        // var btn = document.getElementById("buttonAddItem");
+        // btn.addEventListener("click", this.addItem);
+        // document.getElementById("searchButton").addEventListener("click", this.searchItems);
+
+        // header.insertAdjacentHTML("beforeend", str);
     }
 
     appendTable() {
         //create label
-        var label = document.createElement("tr");
-        label.id = "label";
-        var labelId = document.createElement("td");
-        labelId.textContent = "Mã sản phẩm";
-        var labelName = document.createElement("td");
-        labelName.textContent = "Tên sản phẩm";
-        var labelNote = document.createElement("td");
-        labelNote.textContent = "Ghi chú";
-        var labelPrice = document.createElement("td");
-        labelPrice.textContent = "Đơn giá";
-        var labelAction = document.createElement("td");
-        labelAction.textContent = "Action";
-
-        label.append(labelId, labelName, labelNote, labelPrice, labelAction);
-        this.tableContent.append(label);
+        var tHead = `<thead>  
+                        <tr id="label">
+                            <th>Mã sản phẩm</th>
+                            <th>Tên sản phẩm</th>
+                            <th>Ghi chú</th>
+                            <th>Đơn giá</th>
+                            <th>Action</th>
+                        </tr> 
+                    </thead>`
+        this.tableContent.insertAdjacentHTML("beforeend", tHead);
 
         //create table
         var _length = this.listItems.length;
         if (_length > 0) {
             //render
             for (var i = 0; i < _length; i++) {
-                var ct = this.renderItem(this.listItems[i], i);
+                var ct = this.renderItem(this.listItems[i]);
                 this.tableContent.append(ct);
             }
         }
         else {
             //empty
-            var emptyTr = document.createElement("tr");
-            var emptyTh = document.createElement("th");
-            emptyTh.colSpan = 5;
-            emptyTh.className = "empty";
-            emptyTh.textContent = "Không có sản phẩm";
-            emptyTr.append(emptyTh);
-            this.tableContent.append(emptyTr);
+            var emptyTr = `<tr><th colspan="5" class="empty">Không có sản phẩm</th></tr>`
+            this.tableContent.insertAdjacentHTML("beforeend", emptyTr);
         }
     }
 
@@ -167,7 +158,7 @@ class View {
         document.getElementById("header").append(modal);
     }
 
-    renderItem(item, index) {
+    renderItem(item) {
         var itemTr = document.createElement("tr");
         var idItem = document.createElement("td");
         idItem.textContent = `${item.idItem}`;
@@ -181,59 +172,88 @@ class View {
 
         var action = document.createElement("td");
         action.className = "action";
-        var aEdit = document.createElement("a");
-        aEdit.href = "#";
-        aEdit.textContent = "Sửa";
-        aEdit.addEventListener("click", this.editItem);
-        var aDelete = document.createElement("a");
-        aDelete.href = "#";
-        aDelete.textContent = "Xoá";
-        aDelete.addEventListener("click", this.deleteItem);
+        var aEdit = document.createElement("input");
+        aEdit.type = "button";
+        aEdit.value = "Sửa";
+        // aEdit.addEventListener("click", this.editItem[index]);
+        var aDelete = document.createElement("input");
+        aDelete.type = "button";
+        aDelete.value = "Xoá";
+        // aDelete.addEventListener("click", this.deleteItem);
 
-        action.append(aEdit, " | ", aDelete);
-
+        action.append(aEdit, " - ", aDelete);
         itemTr.append(idItem, nameItem, noteItem, priceItem, action);
 
         return itemTr;
     }
 
     render() {
-        this.appendHeader();
+        this.appendSearchBar();
         this.appendModal();
         this.appendTable();
     }
 
     reRender() {
-        this.clearTable();
+        this.tableContent.innerHTML = "";
         this.appendTable();
+    }
+
+    changeLabel(newLabel) {
+        document.getElementById("labelAddItem").innerHTML = newLabel;
     }
 }
 
 class Controller {
     constructor(model, view) {
-        // console.log("Controller constructor()");
+        this.status = "default";
         this.model = model;
         this.view = view;
+        this.view.tableContent.addEventListener("click", this.tableClick);
         this.view.listItems = this.model.listItems;
-        this.view.addItem = this.showModal;
-        this.editItem = this.editItem.bind(this);
-        this.view.editItem = this.editItem;
-        this.deleteItem = this.deleteItem.bind(this);
-        this.view.deleteItem = this.deleteItem;
-        this.searchItem = this.searchItem.bind(this);
-        this.view.searchItem = this.searchItem;
-        this.clearTable = this.clearTable.bind(this);
+        this.view.addItem = this.addItem;
+        this.view.searchItems = this.searchItems;
         this.view.clearTable = this.clearTable;
-        this.confirm = this.confirm.bind(this);
         this.view.confirm = this.confirm;
-        this.clear = this.clear.bind(this);
-        this.view.clear = this.clear;
+        this.view.clear = this.clearModal;
         this.view.closeModal = this.closeModal;
         this.view.render();
         this.idItem = document.getElementById("idItem");
         this.nameItem = document.getElementById("nameItem");
         this.priceItem = document.getElementById("priceItem");
         this.noteItem = document.getElementById("noteItem");
+    }
+
+    tableClick = (e) => {
+        if (!e) e = window.event;
+        this.rowTarget = e.target.parentNode.parentNode;
+        var index = this.rowTarget.rowIndex;
+        var _item = this.model.listItems[index - 1];
+        if (e.target.value == "Sửa") {
+            this.editItem(_item);
+        }
+        if (e.target.value == "Xoá") {
+            this.view.tableContent.deleteRow(index);
+            this.model.deleteItem(_item);
+        }
+    }
+
+    addItem = () => {
+        this.status = "adding";
+        this.clearModal();
+        this.view.changeLabel("Thêm sản phẩm");
+        this.idItem.readOnly = false;
+        this.showModal();
+    }
+
+    editItem = (_item) => {
+        this.status = "editing";
+        this.view.changeLabel("Sửa sản phẩm");
+        this.showModal();
+        this.idItem.readOnly = true;
+        this.idItem.value = _item.idItem;
+        this.nameItem.value = _item.nameItem;
+        this.priceItem.value = _item.priceItem;
+        this.noteItem.value = _item.noteItem;
     }
 
     showModal() {
@@ -254,73 +274,78 @@ class Controller {
         return item;
     }
 
-    confirm() {
-        var _item = this.getModalValue();
-        var flag = 0;
+    confirm = () => {
+        var item = this.getModalValue();
+        var errorInfo = 0;
         //validate form
-        if (_item.idItem == "" || _item.nameItem == "" || _item.priceItem == "") {
-            flag++;
+        if (item.idItem == "" || item.nameItem == "" || item.priceItem == "") {
+            errorInfo++;
             var string = "";
-            if (_item.idItem == "") string += "Mã sản phẩm,";
-            if (_item.nameItem == "") string += " Tên sản phẩm,";
-            if (_item.priceItem == "") string += " Đơn giá,";
+            if (item.idItem == "") string += "Mã sản phẩm,";
+            if (item.nameItem == "") string += " Tên sản phẩm,";
+            if (item.priceItem == "") string += " Đơn giá,";
             string = string.substr(0, string.length - 1);
             string += " không được bỏ trống";
             alert(string);
         }
-        if (flag === 0) { //info correct
-            var item = {
-                idItem: this.idItem.value,
-                nameItem: this.nameItem.value,
-                priceItem: this.priceItem.value,
-                noteItem: this.noteItem.value,
+        //info correct
+        if (errorInfo === 0) {
+            //adding
+            if (this.status == "adding") {
+                var errorId = 0;
+                this.model.listItems.find(sp => {
+                    if (item.idItem == sp.idItem)
+                        errorId++;
+                });
+                if (errorId != 0) {
+                    alert("Mã sản phẩm không được trùng");
+                    return;
+                }
+                this.model.addItem(item);
+                this.view.tableContent.append(this.view.renderItem(item));
             }
-            let flag2 = 0;
-            this.model.listItems.find(sp => {
-                if (item.idItem == sp.idItem)
-                    flag2++;
-            });
-            if (flag2 != 0) {
-                alert("Mã sản phẩm không được trùng");
-                return;
+            //editing
+            else {
+                console.log("editing");
+                this.model.editItem(item);
+                //replace row
+                var newRow = this.view.renderItem(item);
+                this.rowTarget.parentNode.replaceChild(newRow, this.rowTarget);
             }
-            this.model.addItem(item);
-            this.clear();
-            this.view.reRender();
+            // this.clearModal();
             this.closeModal();
         }
     }
 
-    clear() {
+    clearModal = () => {
         this.idItem.value = "";
         this.nameItem.value = "";
         this.priceItem.value = "";
         this.noteItem.value = "";
     }
 
-    clearTable() {
+    clearTable = () => {
         this.view.listItems = this.model.listItems;
         document.getElementById("table").innerHTML = "";
-
     }
 
-    deleteItem() {
-        var _item = {
-            idItem: "HP-01", nameItem: "5510", noteItem: "gaming", priceItem: "20000000"
-        }
-        // console.log(this);
-
-        this.model.deleteItem(_item);
-        // this.view.deleteItem;
-        this.view.reRender();
-    }
-
-    editItem() {
-        console.log("edit clicked");
-    }
-
-    searchItem() {
+    searchItems = () => {
         console.log("search clicked");
+        var txtSearch = document.getElementById("searchInput");
+        var listItemsFiltered = [];
+        var name = txtSearch.value;
+        if (name.length == 0) {
+            this.status = "default";
+            updateDataTable(listItems);
+            return;
+        }
+        status = "filtering";
+        listItemsFiltered = this.model.listItems.filter(sp =>
+            sp.idItem.toLowerCase().search(name) != -1 || sp.nameItem.toLowerCase().search(name) != -1 ||
+            sp.priceItem.toLowerCase().search(name) != -1 || sp.noteItem.toLowerCase().search(name) != -1)
+
+        txtSearch.value = name;
+        updateDataTable(listItemsFiltered);
 
     }
 }
