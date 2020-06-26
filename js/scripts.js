@@ -13,7 +13,13 @@ class Model {
     }
 
     editItem(item) {
-        this.listItems.splice(1, 1, item);
+        var index;
+        this.listItems.find((sp, i) => {
+            if (sp.idItem == item.idItem) {
+                index = i;
+            }
+        });
+        this.listItems[index] = item;
         this.saveStorage();
     }
 
@@ -25,8 +31,8 @@ class Model {
 
 class View {
     constructor() {
-        this.tableContent = document.getElementById("table");
         this.listItems = [];
+        this.tableContent = document.getElementById("table");
     }
 
     appendSearchBar() {
@@ -66,7 +72,7 @@ class View {
         // header.insertAdjacentHTML("beforeend", str);
     }
 
-    appendTable() {
+    appendTable(list) {
         //create label
         var tHead = `<thead>  
                         <tr id="label">
@@ -80,19 +86,20 @@ class View {
         this.tableContent.insertAdjacentHTML("beforeend", tHead);
 
         //create table
-        var _length = this.listItems.length;
+        var _length = list.length;
         if (_length > 0) {
             //render
             for (var i = 0; i < _length; i++) {
-                var ct = this.renderItem(this.listItems[i]);
+                var ct = this.renderItem(list[i]);
                 this.tableContent.append(ct);
             }
         }
-        else {
-            //empty
-            var emptyTr = `<tr><th colspan="5" class="empty">Không có sản phẩm</th></tr>`
-            this.tableContent.insertAdjacentHTML("beforeend", emptyTr);
-        }
+        else this.showEmptyList();
+    }
+
+    showEmptyList() {
+        var emptyTr = `<tr><th colspan="5" class="empty">Không có sản phẩm</th></tr>`
+        this.tableContent.insertAdjacentHTML("beforeend", emptyTr);
     }
 
     appendModal() {
@@ -190,12 +197,12 @@ class View {
     render() {
         this.appendSearchBar();
         this.appendModal();
-        this.appendTable();
+        this.appendTable(this.listItems);
     }
 
-    reRender() {
+    reRender(list) {
         this.tableContent.innerHTML = "";
-        this.appendTable();
+        this.appendTable(list);
     }
 
     changeLabel(newLabel) {
@@ -205,17 +212,17 @@ class View {
 
 class Controller {
     constructor(model, view) {
-        this.status = "default";
-        this.model = model;
         this.view = view;
-        this.view.tableContent.addEventListener("click", this.tableClick);
-        this.view.listItems = this.model.listItems;
-        this.view.addItem = this.addItem;
-        this.view.searchItems = this.searchItems;
-        this.view.clearTable = this.clearTable;
-        this.view.confirm = this.confirm;
+        this.model = model;
+        this.status = "default";
         this.view.clear = this.clearModal;
+        this.view.addItem = this.addItem;
+        this.view.confirm = this.confirm;
+        this.view.listItems = this.model.listItems;
         this.view.closeModal = this.closeModal;
+        this.view.clearTable = this.clearTable;
+        this.view.searchItems = this.searchItems;
+        this.view.tableContent.addEventListener("click", this.tableClick);
         this.view.render();
         this.idItem = document.getElementById("idItem");
         this.nameItem = document.getElementById("nameItem");
@@ -227,51 +234,18 @@ class Controller {
         if (!e) e = window.event;
         this.rowTarget = e.target.parentNode.parentNode;
         var index = this.rowTarget.rowIndex;
-        var _item = this.model.listItems[index - 1];
-        if (e.target.value == "Sửa") {
+        var _item;
+        if (this.status == "default")
+            _item = this.model.listItems[index - 1];
+        else
+            _item = this.listItemsFiltered[index - 1];
+
+        console.log(_item);
+
+        if (e.target.value == "Sửa")
             this.editItem(_item);
-        }
-        if (e.target.value == "Xoá") {
-            this.view.tableContent.deleteRow(index);
-            this.model.deleteItem(_item);
-        }
-    }
-
-    addItem = () => {
-        this.status = "adding";
-        this.clearModal();
-        this.view.changeLabel("Thêm sản phẩm");
-        this.idItem.readOnly = false;
-        this.showModal();
-    }
-
-    editItem = (_item) => {
-        this.status = "editing";
-        this.view.changeLabel("Sửa sản phẩm");
-        this.showModal();
-        this.idItem.readOnly = true;
-        this.idItem.value = _item.idItem;
-        this.nameItem.value = _item.nameItem;
-        this.priceItem.value = _item.priceItem;
-        this.noteItem.value = _item.noteItem;
-    }
-
-    showModal() {
-        document.getElementById("addModal").style.display = "block";
-    }
-
-    closeModal() {
-        document.getElementById("addModal").style.display = "none";
-    }
-
-    getModalValue() {
-        var item = {
-            idItem: this.idItem.value,
-            nameItem: this.nameItem.value,
-            priceItem: this.priceItem.value,
-            noteItem: this.noteItem.value,
-        }
-        return item;
+        if (e.target.value == "Xoá")
+            this.deleteItem(_item);
     }
 
     confirm = () => {
@@ -291,7 +265,7 @@ class Controller {
         //info correct
         if (errorInfo === 0) {
             //adding
-            if (this.status == "adding") {
+            if (this.addingOrEditing == "adding") {
                 var errorId = 0;
                 this.model.listItems.find(sp => {
                     if (item.idItem == sp.idItem)
@@ -302,19 +276,96 @@ class Controller {
                     return;
                 }
                 this.model.addItem(item);
-                this.view.tableContent.append(this.view.renderItem(item));
+                this.view.reRender(this.model.listItems);
             }
             //editing
             else {
-                console.log("editing");
                 this.model.editItem(item);
-                //replace row
-                var newRow = this.view.renderItem(item);
-                this.rowTarget.parentNode.replaceChild(newRow, this.rowTarget);
+                //default
+                if (this.status == "default") {
+                    this.view.reRender(this.model.listItems);
+                }
+                //filtering
+                else {
+                    //edit item in listItemsFiltered[]
+                    var _index;
+                    this.listItemsFiltered.find((sp, i) => {
+                        if (sp.idItem == item.idItem) {
+                            _index = i;
+                        }
+                    });
+                    this.listItemsFiltered[_index] = item;
+
+                    this.view.reRender(this.listItemsFiltered);
+                }
             }
-            // this.clearModal();
             this.closeModal();
         }
+    }
+
+    addItem = () => {
+        this.addingOrEditing = "adding";
+        this.clearModal();
+        this.view.changeLabel("Thêm sản phẩm");
+        this.idItem.readOnly = false;
+        this.showModal();
+    }
+
+    editItem = (item) => {
+        this.addingOrEditing = "editing";
+        this.view.changeLabel("Sửa sản phẩm");
+        this.showModal();
+        this.idItem.readOnly = true;
+        this.idItem.value = item.idItem;
+        this.nameItem.value = item.nameItem;
+        this.priceItem.value = item.priceItem;
+        this.noteItem.value = item.noteItem;
+    }
+
+    deleteItem(item) {
+        this.model.deleteItem(item);
+        if (this.status == "default") {
+            this.view.reRender(this.model.listItems);
+        }
+        else { //filtering
+            //delete item in listItemsFiltered
+            this.listItemsFiltered = this.listItemsFiltered.filter(sp => sp.idItem != item.idItem);
+            this.view.reRender(this.listItemsFiltered);
+        }
+        if (this.model.listItems.length == 0) this.view.showEmptyList();
+    }
+
+    searchItems = () => {
+        var string = document.getElementById("searchInput").value;
+        if (string.length == 0) {
+            this.status = "default";
+            this.view.reRender(this.model.listItems);
+            return;
+        }
+        this.status = "filtering";
+        this.listItemsFiltered = this.model.listItems.filter(sp =>
+            sp.idItem.toLowerCase().search(string) != -1 || sp.nameItem.toLowerCase().search(string) != -1 ||
+            sp.priceItem.toLowerCase().search(string) != -1 || sp.noteItem.toLowerCase().search(string) != -1)
+
+        this.view.reRender(this.listItemsFiltered);
+    }
+
+    getModalValue() {
+        var item = {
+            idItem: this.idItem.value,
+            nameItem: this.nameItem.value,
+            priceItem: this.priceItem.value,
+            noteItem: this.noteItem.value,
+        }
+        return item;
+    }
+
+    showModal() {
+        document.getElementById("addModal").style.display = "block";
+    }
+
+    closeModal() {
+        document.getElementById("addModal").style.display = "none";
     }
 
     clearModal = () => {
@@ -329,25 +380,6 @@ class Controller {
         document.getElementById("table").innerHTML = "";
     }
 
-    searchItems = () => {
-        console.log("search clicked");
-        var txtSearch = document.getElementById("searchInput");
-        var listItemsFiltered = [];
-        var name = txtSearch.value;
-        if (name.length == 0) {
-            this.status = "default";
-            updateDataTable(listItems);
-            return;
-        }
-        status = "filtering";
-        listItemsFiltered = this.model.listItems.filter(sp =>
-            sp.idItem.toLowerCase().search(name) != -1 || sp.nameItem.toLowerCase().search(name) != -1 ||
-            sp.priceItem.toLowerCase().search(name) != -1 || sp.noteItem.toLowerCase().search(name) != -1)
-
-        txtSearch.value = name;
-        updateDataTable(listItemsFiltered);
-
-    }
 }
 
 const hic = new Controller(new Model(), new View());
